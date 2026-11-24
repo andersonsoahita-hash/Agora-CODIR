@@ -107,6 +107,7 @@ label.k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--
     <input id="ti" type="text" placeholder="Ou écris ta phrase ici" autocomplete="off" aria-label="Ta phrase">
     <button class="b" type="submit">Envoyer</button>
   </form>
+  <label class="muted" style="display:flex;gap:10px;align-items:center;font-size:14px"><input type="checkbox" id="auto" style="flex:none;width:18px;height:18px;padding:0"> Envoyer directement après la dictée, sans relecture</label>
 
   <section class="log" id="log" aria-live="polite"></section>
 
@@ -117,7 +118,7 @@ label.k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--
     <div class="row"><button class="b main" id="cb" type="button">Copier le brief</button><span class="muted" id="cbs" role="status"></span></div>
   </section>
 
-  <details>
+  <details id="settings">
     <summary>Réglages</summary>
     <div class="set">
       <label class="k" for="ep">Adresse du serveur Apps Script</label>
@@ -193,7 +194,9 @@ function startListen(){
   rec.onend=()=>{
     if(stopReq){
       const t=(finalT+interimT).trim();finalT="";interimT="";stopReq=false;
-      if(t)send(t);else{setSt("idle");live.textContent="Je n'ai rien entendu. Réessaie.";}
+      if(!t){setSt("idle");live.textContent="Je n'ai rien entendu. Réessaie.";}
+      else if($("auto").checked)send(t);
+      else{const cur=$("ti").value.trim();$("ti").value=(cur?cur+" ":"")+t;$("ti").focus();setSt("idle");live.textContent="Relis, corrige si la dictée s'est trompée, puis touche Envoyer. Tu peux aussi dicter la suite.";}
     }else if(st==="listening"){try{rec.start()}catch(e){}}
   };
   setSt("listening");live.textContent="Je t'écoute…";
@@ -249,6 +252,7 @@ function payload(extra){
 async function callServer(extra){
   const ep=ls.get("ep")||DEFAULT_EP;
   if(!ep)return demo(extra);
+  if(!ls.get("pw")){$("settings").open=true;throw new Error("Saisis ton code d'accès dans Réglages, puis enregistre");}
   const r=await fetch(ep,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload(extra))});
   const j=await r.json();
   if(!j.ok)throw new Error(j.error||"Erreur du serveur");
@@ -270,7 +274,7 @@ async function send(text){
   try{
     const d=await callServer({action:"turn",message:text});
     await playReplies(d.replies||[]);
-  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e)+". Vérifie les réglages.";}
+  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e)+". Vérifie les réglages.";if(/accès/i.test(String(e.message||e)))$("settings").open=true;}
 }
 
 /* Clôture */
@@ -320,7 +324,7 @@ mic.onclick=()=>{
 $("stopSpeak").onclick=interrupt;
 $("end").onclick=finish;
 $("tf").onsubmit=e=>{e.preventDefault();const t=$("ti").value.trim();if(t&&st==="idle"){$("ti").value="";send(t);}};
-$("save").onclick=()=>{ls.set("ep",$("ep").value.trim());ls.set("pw",$("pw").value);ls.set("rt",$("rt").value);$("ss").textContent="Enregistré.";showMode();};
+$("save").onclick=()=>{ls.set("ep",$("ep").value.trim());ls.set("pw",$("pw").value.trim());ls.set("rt",$("rt").value);$("ss").textContent="Enregistré.";showMode();};
 $("test").onclick=async()=>{for(const k of AROUND.slice(0,4)){hl(k);await speak("Bonjour, je suis "+R[k].n+".",k);}hl(null);};
 $("cb").onclick=async()=>{
   const t=$("brief").textContent,s=$("cbs");
@@ -331,6 +335,7 @@ function showMode(){
   $("mode").innerHTML=(ls.get("ep")||DEFAULT_EP)?"<b>Serveur branché.</b> Les responsables répondent avec les moteurs gratuits configurés.":"<b>Mode démonstration.</b> La voix, le micro et la table fonctionnent, mais les réponses sont de simples échos. Ouvre « Réglages » pour saisir l'adresse de ton serveur Apps Script.";
 }
 $("ep").value=ls.get("ep")||DEFAULT_EP;$("pw").value=ls.get("pw");if(ls.get("rt"))$("rt").value=ls.get("rt");
+$("auto").checked=ls.get("auto")==="1";$("auto").onchange=()=>ls.set("auto",$("auto").checked?"1":"0");
 showMode();
 </script>
 </body>
