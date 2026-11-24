@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Codir Agora · by Stephen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#2a0d12; --panel:#381219; --panel2:#45171f; --line:#5a2530;
+  --fg:#f6ecea; --muted:#c9aaa6; --accent:#e0b04a; --accent-ink:#2a0d12;
+  --ok:#7fd3a0; --warn:#f0b35a; --stop:#ff8a80;
+  --display:'Fraunces',Georgia,serif; --body:'Inter',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-block:calc(24px + env(safe-area-inset-top,0px)) calc(56px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-family:var(--display);font-size:clamp(26px,5vw,38px);line-height:1.1;margin:4px 0 0;text-wrap:balance}
+h2{font-family:var(--display);font-size:22px;margin:0}
+.muted{color:var(--muted)}
+.notice{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--muted)}
+.notice b{color:var(--fg)}
+
+/* Table ronde : le président au centre, les responsables autour */
+.stage{position:relative;width:min(100%,540px);aspect-ratio:1;margin:0 auto}
+.ring{position:absolute;inset:12%;border-radius:50%;border:1px dashed var(--line)}
+.disk{position:absolute;inset:22%;border-radius:50%;background:var(--panel);border:2px solid var(--accent)}
+.seat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;width:74px;text-align:center;transition:transform .2s}
+.dot{width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#1c0a0d;border:2px solid transparent;transition:border-color .2s,box-shadow .2s}
+.seat small{font-size:11px;line-height:1.15;color:var(--muted)}
+.seat.on{transform:translate(-50%,-50%) scale(1.12)}
+.seat.on .dot{border-color:var(--accent);box-shadow:0 0 0 4px rgba(224,176,74,.28)}
+.seat.on small{color:var(--fg)}
+.stage{--s:clamp(40px,9.5vw,58px)}
+.mic{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34%;aspect-ratio:1;border-radius:50%;
+  background:var(--accent);color:var(--accent-ink);border:0;font:inherit;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px}
+.mic svg{width:34%;height:auto}
+.mic span{font-size:clamp(10px,2.4vw,13px);line-height:1.15;text-align:center}
+.mic.listen{background:var(--stop);animation:pulse 1.2s infinite}
+.mic.busy{background:var(--panel2);color:var(--fg);cursor:default}
+.mic.speak{background:var(--ok)}
+.who-center{position:absolute;left:50%;top:27.5%;transform:translateX(-50%);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600;white-space:nowrap}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,138,128,.55)}100%{box-shadow:0 0 0 18px rgba(255,138,128,0)}}
+
+.live{min-height:48px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 14px;color:var(--muted)}
+.live b{color:var(--fg)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button.b,input,select{font:inherit;border-radius:10px;padding:10px 16px;border:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+button.b{font-weight:600;cursor:pointer}
+button.b.main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+input{flex:1 1 220px;min-width:0;background:var(--panel)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.log{display:flex;flex-direction:column;gap:10px}
+.msg{display:grid;grid-template-columns:32px minmax(0,1fr);gap:10px}
+.av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:#1c0a0d}
+.bub{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;min-width:0;overflow-wrap:anywhere}
+.msg.stop .bub{border-color:var(--stop)}
+.who{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.who b{color:var(--fg)}
+.tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:1px 8px;border:1px solid var(--line)}
+.tag.idee{color:var(--accent);border-color:var(--accent)} .tag.ajust{color:var(--ok);border-color:var(--ok)} .tag.stop{color:var(--stop);border-color:var(--stop)} .tag.avis{color:var(--muted)}
+.msg p{margin:0}
+.out{display:none;flex-direction:column;gap:14px}.out.show{display:flex}
+.step{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.step .w{font-weight:600;color:var(--accent);font-size:14px}.step .o{display:block;color:var(--muted);font-size:13px}
+.pv{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h3{margin:0 0 8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+pre{white-space:pre-wrap;margin:0;font:13px/1.5 var(--body);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-wrap:anywhere}
+details{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 14px}
+summary{cursor:pointer;font-weight:600}
+.set{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+label.k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+@media (max-width:520px){.seat{width:58px}.seat small{font-size:10px}.step{grid-template-columns:1fr;gap:4px}}
+@media (prefers-reduced-motion:reduce){.mic.listen{animation:none}.seat{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Agora · by Stephen</div>
+    <h1>Le Codir d'Agora</h1>
+    <p class="muted" style="margin:6px 0 0">Parle à voix haute. La table réfléchit, répond à voix haute, et s'ajuste à ce que tu dis.</p>
+  </header>
+
+  <div class="notice" id="mode"></div>
+
+  <div class="stage" id="stage">
+    <div class="ring"></div><div class="disk"></div>
+    <div class="who-center">Stephen · Président</div>
+    <button class="mic" id="mic" type="button" aria-live="polite"></button>
+  </div>
+
+  <div class="live" id="live" aria-live="polite">Touche le micro, parle, puis touche à nouveau pour envoyer.</div>
+
+  <div class="row">
+    <button class="b" id="stopSpeak" type="button">Interrompre la table</button>
+    <button class="b main" id="end" type="button">Clôturer la séance</button>
+  </div>
+  <form class="row" id="tf">
+    <input id="ti" type="text" placeholder="Ou écris ta phrase ici" autocomplete="off" aria-label="Ta phrase">
+    <button class="b" type="submit">Envoyer</button>
+  </form>
+
+  <section class="log" id="log" aria-live="polite"></section>
+
+  <section class="out" id="out">
+    <h2>Plan du chef de projet</h2><div id="plan" style="display:flex;flex-direction:column;gap:8px"></div>
+    <h2>Compte rendu du secrétaire</h2><div class="pv" id="pv"></div>
+    <h2>Brief pour Claude</h2><pre id="brief"></pre>
+    <div class="row"><button class="b main" id="cb" type="button">Copier le brief</button><span class="muted" id="cbs" role="status"></span></div>
+  </section>
+
+  <details>
+    <summary>Réglages</summary>
+    <div class="set">
+      <label class="k" for="ep">Adresse du serveur Apps Script</label>
+      <input id="ep" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+      <label class="k" for="pw">Code d'accès</label>
+      <input id="pw" type="password" autocomplete="off">
+      <label class="k" for="rt">Vitesse de la voix</label>
+      <input id="rt" type="range" min="0.8" max="1.3" step="0.05" value="1">
+      <div class="row"><button class="b" id="save" type="button">Enregistrer</button><button class="b" id="test" type="button">Tester les voix</button><span class="muted" id="ss" role="status"></span></div>
+    </div>
+  </details>
+</div>
+
+<script>
+const R={
+  pres:{n:"Stephen",h:42,i:"S",p:1},
+  mkt:{n:"Marketing",h:350,i:"M",p:1.15},
+  fin:{n:"Finance",h:150,i:"F",p:0.85},
+  prod:{n:"Produit",h:200,i:"P",p:1.0},
+  tech:{n:"Technique",h:260,i:"T",p:0.9},
+  ped:{n:"Pédagogie",h:20,i:"Pé",p:1.2},
+  jur:{n:"Juridique",h:300,i:"J",p:0.8},
+  des:{n:"Designer",h:225,i:"D",p:1.1},
+  chef:{n:"Chef de projet",h:90,i:"C",p:0.95},
+  sec:{n:"Secrétaire",h:180,i:"Se",p:1.05}
+};
+const AROUND=["mkt","fin","prod","tech","ped","jur","des","chef","sec"];
+const TAGS={idee:"Proposition",ajust:"Ajustement",stop:"Interruption",avis:"Avis"};
+const $=id=>document.getElementById(id);
+const col=k=>`hsl(${R[k].h} 62% 66%)`;
+const DEFAULT_EP="https://script.google.com/macros/s/AKfycbz8jbjRaqz9GOSA3oGjrWvU69uiOEFFiSJ_kyO0dKZoDSIDQX5cz5kuas7L1LD32g/exec";
+const ls={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* Sièges autour de la table */
+const stage=$("stage");
+AROUND.forEach((k,n)=>{
+  const a=-Math.PI/2+n*2*Math.PI/AROUND.length;
+  const d=document.createElement("div");d.className="seat";d.id="seat-"+k;
+  d.style.left=(50+41*Math.cos(a))+"%";d.style.top=(50+41*Math.sin(a))+"%";
+  d.innerHTML=`<div class="dot" style="background:${col(k)}">${R[k].i}</div><small>${R[k].n}</small>`;
+  stage.appendChild(d);
+});
+function hl(k){AROUND.forEach(x=>$("seat-"+x).classList.toggle("on",x===k))}
+
+/* État */
+let st="idle",cancelled=false,history=[],president=[];
+const mic=$("mic"),live=$("live");
+const ICON='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4Zm-7-4a1 1 0 1 1 2 0 5 5 0 0 0 10 0 1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V21h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-3.08A7 7 0 0 1 5 11Z"/></svg>';
+function setSt(s){
+  st=s;mic.className="mic "+({listening:"listen",busy:"busy",speaking:"speak"}[s]||"");
+  const t={idle:"Parler",listening:"Envoyer",busy:"La table réfléchit",speaking:"Interrompre"}[s];
+  mic.innerHTML=ICON+"<span>"+t+"</span>";
+}
+setSt("idle");
+
+/* Dictée vocale */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,finalT="",interimT="",stopReq=false;
+function startListen(){
+  if(!SR){live.textContent="Ce navigateur ne gère pas la dictée. Utilise Chrome, ou écris ta phrase en dessous.";return;}
+  finalT="";interimT="";stopReq=false;
+  rec=new SR();rec.lang="fr-FR";rec.continuous=true;rec.interimResults=true;
+  rec.onresult=e=>{
+    interimT="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];
+      if(r.isFinal)finalT+=r[0].transcript+" ";else interimT+=r[0].transcript;
+    }
+    live.innerHTML="<b>Tu dis :</b> "+"";
+    live.appendChild(document.createTextNode(" "+finalT+interimT));
+  };
+  rec.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed"){live.textContent="Le micro est refusé. Autorise-le dans les réglages du navigateur.";stopReq=true;setSt("idle");}};
+  rec.onend=()=>{
+    if(stopReq){
+      const t=(finalT+interimT).trim();finalT="";interimT="";stopReq=false;
+      if(t)send(t);else{setSt("idle");live.textContent="Je n'ai rien entendu. Réessaie.";}
+    }else if(st==="listening"){try{rec.start()}catch(e){}}
+  };
+  setSt("listening");live.textContent="Je t'écoute…";
+  try{rec.start()}catch(e){setSt("idle")}
+}
+function stopListen(){stopReq=true;try{rec.stop()}catch(e){stopReq=false;setSt("idle")}}
+
+/* Voix de la table (synthèse vocale du navigateur, gratuite) */
+let voices=[];
+function loadVoices(){voices=(speechSynthesis.getVoices()||[]).filter(v=>/^fr/i.test(v.lang));}
+if("speechSynthesis" in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}
+function voiceFor(k){
+  if(!voices.length)return null;
+  const order=["pres",...AROUND];
+  return voices[order.indexOf(k)%voices.length];
+}
+function speak(text,k){
+  return new Promise(res=>{
+    if(!("speechSynthesis" in window)){res();return;}
+    const u=new SpeechSynthesisUtterance(text);u.lang="fr-FR";
+    const v=voiceFor(k);if(v)u.voice=v;
+    u.rate=+$("rt").value||1;u.pitch=R[k].p;
+    u.onend=u.onerror=()=>res();
+    speechSynthesis.speak(u);
+  });
+}
+function interrupt(){cancelled=true;try{speechSynthesis.cancel()}catch(e){}}
+
+/* Journal */
+function addMsg(r){
+  const d=document.createElement("div");d.className="msg"+(r.type==="stop"?" stop":"");
+  d.innerHTML=`<div class="av" style="background:${col(r.who)}">${R[r.who].i}</div><div class="bub"><div class="who"><b>${R[r.who].n}</b><span class="tag ${r.type}">${TAGS[r.type]||""}</span></div><p></p></div>`;
+  d.querySelector("p").textContent=r.text;
+  if(r.who==="pres")d.querySelector(".tag").remove();
+  $("log").appendChild(d);d.scrollIntoView({block:"nearest",behavior:"smooth"});
+  history.push({n:R[r.who].n,t:r.text});
+  if(r.who==="pres")president.push(r.text);
+}
+async function playReplies(list){
+  cancelled=false;setSt("speaking");
+  for(const r of list){
+    if(cancelled)break;
+    addMsg(r);hl(r.who);live.textContent=R[r.who].n+" parle…";
+    await speak(r.text,r.who);
+  }
+  hl(null);setSt("idle");live.textContent="À toi. Touche le micro pour répondre ou poser une autre question.";
+}
+
+/* Serveur */
+function payload(extra){
+  return Object.assign({pass:ls.get("pw"),history:history.slice(-12).map(m=>({n:m.n,t:m.t.slice(0,500)})),president:president.slice(-20).map(t=>t.slice(0,300))},extra);
+}
+async function callServer(extra){
+  const ep=ls.get("ep")||DEFAULT_EP;
+  if(!ep)return demo(extra);
+  const r=await fetch(ep,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload(extra))});
+  const j=await r.json();
+  if(!j.ok)throw new Error(j.error||"Erreur du serveur");
+  return j;
+}
+function demo(x){
+  if(x.action==="close"){
+    return {resume:"Séance de démonstration terminée. Branche le serveur pour obtenir un vrai compte rendu.",plan:[{quand:"Étape 1",quoi:"Brancher le serveur Apps Script",qui:"Président"}],decisions:president.slice(-3),ouverts:["Moteurs gratuits à configurer"],actions:["Déployer Code.gs et saisir son adresse dans les réglages"]};
+  }
+  const m=x.message.slice(0,140);
+  return {replies:[
+    {who:"mkt",type:"idee",text:"J'ai bien entendu : "+m+". Dans la version branchée, je répondrai vraiment sur le marketing."},
+    {who:"fin",type:"avis",text:"Et moi sur le budget. Pour l'instant, c'est le mode démonstration."}
+  ]};
+}
+async function send(text){
+  addMsg({who:"pres",type:"idee",text});
+  setSt("busy");live.textContent="La table réfléchit…";
+  try{
+    const d=await callServer({action:"turn",message:text});
+    await playReplies(d.replies||[]);
+  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e)+". Vérifie les réglages.";}
+}
+
+/* Clôture */
+async function finish(){
+  interrupt();
+  if(!president.length){live.textContent="Parle d'abord à la table avant de clôturer.";return;}
+  setSt("busy");live.textContent="Le secrétaire rédige le compte rendu…";
+  try{
+    const d=await callServer({action:"close"});
+    renderOut(d);
+    setSt("idle");
+    if(d.resume){cancelled=false;hl("sec");addMsg({who:"sec",type:"avis",text:d.resume});await speak(d.resume,"sec");hl(null);}
+    live.textContent="Séance clôturée. Copie le brief pour Claude.";
+  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e);}
+}
+function list(h,l){const c=document.createElement("div");c.className="card";const e=document.createElement("h3");e.textContent=h;const u=document.createElement("ul");(l||[]).forEach(x=>{const li=document.createElement("li");li.textContent=x;u.appendChild(li)});c.append(e,u);return c}
+function renderOut(d){
+  const p=$("plan");p.innerHTML="";
+  (d.plan||[]).forEach(s=>{const e=document.createElement("div");e.className="step";e.innerHTML='<span class="w"></span><span><span class="t"></span><span class="o"></span></span>';e.querySelector(".w").textContent=s.quand||"";e.querySelector(".t").textContent=s.quoi||"";e.querySelector(".o").textContent="Responsable : "+(s.qui||"");p.appendChild(e)});
+  const v=$("pv");v.innerHTML="";
+  v.append(list("Décisions",d.decisions),list("Points ouverts",d.ouverts),list("Actions",d.actions));
+  const L=a=>(a||[]).map(x=>"- "+x).join("\n")||"- aucun";
+  $("brief").textContent=`Directives pour Claude, issues du Codir d'Agora
+
+Décisions :
+${L(d.decisions)}
+
+Ce que j'ai imposé ou refusé pendant la séance :
+${L(president.slice(-8))}
+
+Points à clarifier avec moi avant de coder :
+${L(d.ouverts)}
+
+Travail à faire :
+${L(d.actions)}
+
+Règles : ne touche à rien d'autre que ce qui est listé. Aucune clé d'API, aucun coût caché. Optimisé ordinateur et mobile. Signature « by Stephen ».`;
+  $("out").classList.add("show");$("out").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* Commandes */
+mic.onclick=()=>{
+  if(st==="idle")startListen();
+  else if(st==="listening")stopListen();
+  else if(st==="speaking"){interrupt();}
+};
+$("stopSpeak").onclick=interrupt;
+$("end").onclick=finish;
+$("tf").onsubmit=e=>{e.preventDefault();const t=$("ti").value.trim();if(t&&st==="idle"){$("ti").value="";send(t);}};
+$("save").onclick=()=>{ls.set("ep",$("ep").value.trim());ls.set("pw",$("pw").value);ls.set("rt",$("rt").value);$("ss").textContent="Enregistré.";showMode();};
+$("test").onclick=async()=>{for(const k of AROUND.slice(0,4)){hl(k);await speak("Bonjour, je suis "+R[k].n+".",k);}hl(null);};
+$("cb").onclick=async()=>{
+  const t=$("brief").textContent,s=$("cbs");
+  try{await navigator.clipboard.writeText(t);s.textContent="Brief copié.";}
+  catch(e){const r=document.createRange();r.selectNodeContents($("brief"));const g=getSelection();g.removeAllRanges();g.addRange(r);s.textContent="Sélectionné : fais Ctrl+C.";}
+};
+function showMode(){
+  $("mode").innerHTML=(ls.get("ep")||DEFAULT_EP)?"<b>Serveur branché.</b> Les responsables répondent avec les moteurs gratuits configurés.":"<b>Mode démonstration.</b> La voix, le micro et la table fonctionnent, mais les réponses sont de simples échos. Ouvre « Réglages » pour saisir l'adresse de ton serveur Apps Script.";
+}
+$("ep").value=ls.get("ep")||DEFAULT_EP;$("pw").value=ls.get("pw");if(ls.get("rt"))$("rt").value=ls.get("rt");
+showMode();
+</script>
+</body>
+</html>
