@@ -230,17 +230,24 @@ function voiceFor(k){
   const order=["pres",...AROUND];
   return voices[order.indexOf(k)%voices.length];
 }
+let curDone=null;
 function speak(text,k){
   return new Promise(res=>{
     if(!("speechSynthesis" in window)){res();return;}
+    let done=false,t=null;
+    const fin=()=>{if(done)return;done=true;clearTimeout(t);curDone=null;res();};
     const u=new SpeechSynthesisUtterance(text);u.lang="fr-FR";
     const v=voiceFor(k);if(v)u.voice=v;
     u.rate=+$("rt").value||1;u.pitch=R[k].p;
-    u.onend=u.onerror=()=>res();
+    u.onend=u.onerror=fin;
+    // Sécurité : sur certains téléphones la fin de lecture n'est jamais signalée.
+    t=setTimeout(()=>{try{speechSynthesis.cancel()}catch(e){}fin();},Math.min(60000,3000+text.length*130/(+$("rt").value||1)));
+    curDone=fin;
+    try{speechSynthesis.cancel()}catch(e){}
     speechSynthesis.speak(u);
   });
 }
-function interrupt(){cancelled=true;try{speechSynthesis.cancel()}catch(e){}}
+function interrupt(){cancelled=true;try{speechSynthesis.cancel()}catch(e){}if(curDone)curDone();}
 
 /* Journal */
 function addMsg(r){
