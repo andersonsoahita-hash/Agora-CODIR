@@ -121,10 +121,11 @@ label.k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--
   <details id="settings">
     <summary>Réglages</summary>
     <div class="set">
-      <label class="k" for="ep">Adresse du serveur Apps Script</label>
-      <input id="ep" type="url" placeholder="https://script.google.com/macros/s/.../exec">
-      <label class="k" for="pw">Code d'accès</label>
-      <input id="pw" type="password" autocomplete="off">
+      <div class="k" id="dev" role="status"></div>
+      <div class="row"><button class="b main" id="ask" type="button">Recevoir un code par e-mail</button></div>
+      <label class="k" for="cd">Code reçu (usage unique, valable 10 minutes)</label>
+      <input id="cd" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 chiffres">
+      <div class="row"><button class="b" id="act" type="button">Activer cet appareil</button><button class="b" id="out2" type="button">Retirer cet appareil</button></div>
       <label class="k" for="rt">Vitesse de la voix</label>
       <input id="rt" type="range" min="0.8" max="1.3" step="0.05" value="1">
       <div class="row"><button class="b" id="save" type="button">Enregistrer</button><button class="b" id="test" type="button">Tester les voix</button><span class="muted" id="ss" role="status"></span></div>
@@ -149,7 +150,7 @@ const AROUND=["mkt","fin","prod","tech","ped","jur","des","chef","sec"];
 const TAGS={idee:"Proposition",ajust:"Ajustement",stop:"Interruption",avis:"Avis"};
 const $=id=>document.getElementById(id);
 const col=k=>`hsl(${R[k].h} 62% 66%)`;
-const DEFAULT_EP="https://script.google.com/macros/s/AKfycbz8jbjRaqz9GOSA3oGjrWvU69uiOEFFiSJ_kyO0dKZoDSIDQX5cz5kuas7L1LD32g/exec";
+const EP="https://script.google.com/macros/s/AKfycbz8jbjRaqz9GOSA3oGjrWvU69uiOEFFiSJ_kyO0dKZoDSIDQX5cz5kuas7L1LD32g/exec";
 const ls={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
 /* Sièges autour de la table */
@@ -246,17 +247,22 @@ async function playReplies(list){
 }
 
 /* Serveur */
+const KIND=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)?"tel":"pc";
 function payload(extra){
-  return Object.assign({pass:ls.get("pw"),history:history.slice(-12).map(m=>({n:m.n,t:m.t.slice(0,500)})),president:president.slice(-20).map(t=>t.slice(0,300))},extra);
+  return Object.assign({token:ls.get("tk"),kind:KIND,history:history.slice(-12).map(m=>({n:m.n,t:m.t.slice(0,500)})),president:president.slice(-20).map(t=>t.slice(0,300))},extra);
 }
-async function callServer(extra){
-  const ep=ls.get("ep")||DEFAULT_EP;
-  if(!ep)return demo(extra);
-  if(!ls.get("pw")){$("settings").open=true;$("settings").scrollIntoView({behavior:"smooth",block:"center"});throw new Error("Saisis ton code d'accès dans Réglages, puis enregistre");}
-  const r=await fetch(ep,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload(extra))});
+function openSettings(){$("settings").open=true;$("settings").scrollIntoView({behavior:"smooth",block:"center"});}
+async function post(extra){
+  const r=await fetch(EP,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload(extra))});
   const j=await r.json();
   if(!j.ok)throw new Error(j.error||"Erreur du serveur");
   return j;
+}
+async function callServer(extra){
+  if(!EP)return demo(extra);
+  if(!ls.get("tk")){openSettings();throw new Error("Appareil non activé. Reçois un code par e-mail dans Réglages, puis active cet appareil");}
+  try{return await post(extra);}
+  catch(e){if(/non activé/i.test(String(e.message))){ls.set("tk","");showMode();openSettings();}throw e;}
 }
 function demo(x){
   if(x.action==="close"){
@@ -274,7 +280,7 @@ async function send(text){
   try{
     const d=await callServer({action:"turn",message:text});
     await playReplies(d.replies||[]);
-  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e)+". Vérifie les réglages.";if(/accès/i.test(String(e.message||e))){$("settings").open=true;$("settings").scrollIntoView({behavior:"smooth",block:"center"});}}
+  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e)+". Vérifie les réglages.";if(/activ/i.test(String(e.message||e)))openSettings();}
 }
 
 /* Clôture */
@@ -324,7 +330,21 @@ mic.onclick=()=>{
 $("stopSpeak").onclick=interrupt;
 $("end").onclick=finish;
 $("tf").onsubmit=e=>{e.preventDefault();const t=$("ti").value.trim();if(t&&st==="idle"){$("ti").value="";send(t);}};
-$("save").onclick=()=>{ls.set("ep",$("ep").value.trim());ls.set("pw",$("pw").value.trim());ls.set("rt",$("rt").value);$("ss").textContent="Enregistré.";showMode();};
+$("save").onclick=()=>{ls.set("rt",$("rt").value);$("ss").textContent="Enregistré.";};
+$("ask").onclick=async()=>{
+  const b=$("ask"),s=$("ss");b.disabled=true;s.textContent="Envoi du code…";
+  try{await post({action:"ask"});s.textContent="Code envoyé par e-mail. Saisis-le ci-dessous dans les 10 minutes.";$("cd").focus();}
+  catch(e){s.textContent=String(e.message||e);}
+  b.disabled=false;
+};
+$("act").onclick=async()=>{
+  const s=$("ss"),c=$("cd").value.trim();
+  if(!c){s.textContent="Saisis le code reçu par e-mail.";return;}
+  s.textContent="Vérification…";
+  try{const j=await post({action:"activate",code:c});ls.set("tk",j.token);$("cd").value="";s.textContent="Appareil activé.";showMode();}
+  catch(e){s.textContent=String(e.message||e);}
+};
+$("out2").onclick=()=>{ls.set("tk","");$("ss").textContent="Appareil retiré.";showMode();};
 $("test").onclick=async()=>{for(const k of AROUND.slice(0,4)){hl(k);await speak("Bonjour, je suis "+R[k].n+".",k);}hl(null);};
 $("cb").onclick=async()=>{
   const t=$("brief").textContent,s=$("cbs");
@@ -332,9 +352,11 @@ $("cb").onclick=async()=>{
   catch(e){const r=document.createRange();r.selectNodeContents($("brief"));const g=getSelection();g.removeAllRanges();g.addRange(r);s.textContent="Sélectionné : fais Ctrl+C.";}
 };
 function showMode(){
-  $("mode").innerHTML=(ls.get("ep")||DEFAULT_EP)?"<b>Serveur branché.</b> Les responsables répondent avec les moteurs gratuits configurés.":"<b>Mode démonstration.</b> La voix, le micro et la table fonctionnent, mais les réponses sont de simples échos. Ouvre « Réglages » pour saisir l'adresse de ton serveur Apps Script.";
+  const on=!!ls.get("tk");
+  $("dev").textContent=on?"Cet appareil est activé ("+(KIND==="tel"?"téléphone":"ordinateur")+").":"Cet appareil n'est pas activé ("+(KIND==="tel"?"téléphone":"ordinateur")+").";
+  $("mode").innerHTML=on?"<b>Appareil activé.</b> Les responsables répondent avec les moteurs gratuits configurés.":"<b>Appareil non activé.</b> Ouvre « Réglages », demande un code par e-mail, puis active cet appareil.";
 }
-$("ep").value=ls.get("ep")||DEFAULT_EP;$("pw").value=ls.get("pw");if(ls.get("rt"))$("rt").value=ls.get("rt");
+if(ls.get("rt"))$("rt").value=ls.get("rt");
 $("auto").checked=ls.get("auto")==="1";$("auto").onchange=()=>ls.set("auto",$("auto").checked?"1":"0");
 showMode();
 </script>
