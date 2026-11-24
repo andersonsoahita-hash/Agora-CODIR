@@ -39,12 +39,11 @@ h2{font-family:var(--display);font-size:22px;margin:0}
 .stage{--s:clamp(40px,9.5vw,58px)}
 .mic{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34%;aspect-ratio:1;border-radius:50%;
   background:var(--accent);color:var(--accent-ink);border:0;font:inherit;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px}
-.mic svg{width:34%;height:auto}
-.mic span{font-size:clamp(10px,2.4vw,13px);line-height:1.15;text-align:center}
+.mic{-webkit-tap-highlight-color:transparent;touch-action:manipulation;width:38%}
+.mic .nm{font-family:var(--display);font-weight:700;font-size:clamp(15px,4.6vw,26px);line-height:1.12;text-align:center}
 .mic.listen{background:var(--stop);animation:pulse 1.2s infinite}
 .mic.busy{background:var(--panel2);color:var(--fg);cursor:default}
 .mic.speak{background:var(--ok)}
-.who-center{position:absolute;left:50%;top:27.5%;transform:translateX(-50%);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600;white-space:nowrap}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,138,128,.55)}100%{box-shadow:0 0 0 18px rgba(255,138,128,0)}}
 
 .live{min-height:48px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 14px;color:var(--muted)}
@@ -77,7 +76,16 @@ details{border:1px solid var(--line);border-radius:12px;background:var(--panel);
 summary{cursor:pointer;font-weight:600}
 .set{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 label.k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
-@media (max-width:520px){.seat{width:58px}.seat small{font-size:10px}.step{grid-template-columns:1fr;gap:4px}}
+@media (max-width:520px){
+  body{padding-top:calc(16px + env(safe-area-inset-top,0px))}
+  .wrap{gap:16px}
+  .seat{width:58px}.seat small{font-size:10px}.step{grid-template-columns:1fr;gap:4px}
+  .row>button.b{flex:1 1 calc(50% - 5px);min-height:46px}
+  #tf input{flex:1 1 100%}#tf button{flex:1 1 100%}
+  button.b,input,summary{min-height:44px}
+  .notice,.live{font-size:15px}
+  .live{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+}
 @media (prefers-reduced-motion:reduce){.mic.listen{animation:none}.seat{transition:none}}
 </style>
 </head>
@@ -91,13 +99,20 @@ label.k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--
 
   <div class="notice" id="mode"></div>
 
+  <details id="hist">
+    <summary>Historique des séances</summary>
+    <div class="set">
+      <div class="row"><button class="b main" id="newS" type="button">Nouvelle séance</button><button class="b" id="refH" type="button">Actualiser</button></div>
+      <div id="hl" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </details>
+
   <div class="stage" id="stage">
     <div class="ring"></div><div class="disk"></div>
-    <div class="who-center">Stephen · Président</div>
     <button class="mic" id="mic" type="button" aria-live="polite"></button>
   </div>
 
-  <div class="live" id="live" aria-live="polite">Touche le micro, parle, puis touche à nouveau pour envoyer.</div>
+  <div class="live" id="live" aria-live="polite">Touche ton nom pour parler, touche-le encore pour finir.</div>
 
   <div class="row">
     <button class="b" id="stopSpeak" type="button">Interrompre la table</button>
@@ -171,7 +186,8 @@ const ICON='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><pat
 function setSt(s){
   st=s;mic.className="mic "+({listening:"listen",busy:"busy",speaking:"speak"}[s]||"");
   const t={idle:"Parler",listening:"Envoyer",busy:"La table réfléchit",speaking:"Interrompre"}[s];
-  mic.innerHTML=ICON+"<span>"+t+"</span>";
+  mic.innerHTML='<span class="nm">Stephen<br>Anderson</span>';
+  mic.setAttribute("aria-label","Stephen Anderson : "+t);
 }
 setSt("idle");
 
@@ -243,19 +259,26 @@ async function playReplies(list){
     addMsg(r);hl(r.who);live.textContent=R[r.who].n+" parle…";
     await speak(r.text,r.who);
   }
-  hl(null);setSt("idle");live.textContent="À toi. Touche le micro pour répondre ou poser une autre question.";
+  hl(null);setSt("idle");live.textContent="À toi. Touche ton nom pour répondre ou poser une autre question.";
 }
 
 /* Serveur */
 const KIND=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)?"tel":"pc";
+let sid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random().toString(36).slice(2);
 function payload(extra){
-  return Object.assign({token:ls.get("tk"),kind:KIND,history:history.slice(-12).map(m=>({n:m.n,t:m.t.slice(0,500)})),president:president.slice(-20).map(t=>t.slice(0,300))},extra);
+  return Object.assign({token:ls.get("tk"),kind:KIND,sid:sid,history:history.slice(-12).map(m=>({n:m.n,t:m.t.slice(0,500)})),president:president.slice(-20).map(t=>t.slice(0,300))},extra);
 }
 function openSettings(){$("settings").open=true;$("settings").scrollIntoView({behavior:"smooth",block:"center"});}
 async function post(extra){
-  const r=await fetch(EP,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload(extra))});
-  const j=await r.json();
-  if(!j.ok)throw new Error(j.error||"Erreur du serveur");
+  let j;
+  try{
+    const r=await fetch(EP,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload(extra))});
+    j=await r.json();
+  }catch(e){throw new Error("Le serveur ne répond pas. Vérifie que la dernière version est déployée avec l'accès « Tout le monde ».");}
+  if(!j.ok){
+    if(/Code d'accès invalide/i.test(j.error||""))throw new Error("Le serveur n'est pas à jour. Dans Apps Script : Déployer, Gérer les déploiements, Nouvelle version.");
+    throw new Error(j.error||"Erreur du serveur");
+  }
   return j;
 }
 async function callServer(extra){
@@ -320,6 +343,42 @@ ${L(d.actions)}
 Règles : ne touche à rien d'autre que ce qui est listé. Aucune clé d'API, aucun coût caché. Optimisé ordinateur et mobile. Signature « by Stephen ».`;
   $("out").classList.add("show");$("out").scrollIntoView({behavior:"smooth",block:"start"});
 }
+
+/* Historique synchronisé */
+function newSession(){
+  interrupt();
+  sid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random().toString(36).slice(2);
+  history=[];president=[];$("log").innerHTML="";$("out").classList.remove("show");
+  setSt("idle");hl(null);live.textContent="Nouvelle séance. Touche ton nom pour parler.";
+}
+const fdate=x=>{try{return new Date(x).toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}};
+async function loadHist(){
+  const box=$("hl");box.textContent="Chargement…";
+  try{
+    const d=await callServer({action:"list"});
+    box.innerHTML="";
+    if(!(d.sessions||[]).length){box.textContent="Aucune séance enregistrée pour l'instant.";return;}
+    d.sessions.forEach(x=>{
+      const b=document.createElement("button");b.type="button";b.className="b";b.style.textAlign="left";
+      b.textContent=fdate(x.maj)+" · "+(x.titre||"Séance")+" · "+x.etat;
+      b.onclick=()=>openSession(x.id);box.appendChild(b);
+    });
+  }catch(e){box.textContent=String(e.message||e);}
+}
+async function openSession(id){
+  live.textContent="Ouverture de la séance…";
+  try{
+    const d=await callServer({action:"load",sid:id});
+    newSession();sid=d.sid;
+    (d.messages||[]).forEach(m=>{if(R[m.who])addMsg(m)});
+    if(d.result)renderOut(d.result);
+    $("hist").open=false;
+    live.textContent="Séance rouverte"+(d.etat==="clôturée"?" (clôturée). Lance une nouvelle séance pour repartir de zéro.":". Tu peux continuer à parler.");
+  }catch(e){live.textContent="Erreur : "+String(e.message||e);}
+}
+$("hist").addEventListener("toggle",()=>{if($("hist").open&&ls.get("tk"))loadHist();});
+$("newS").onclick=newSession;
+$("refH").onclick=loadHist;
 
 /* Commandes */
 mic.onclick=()=>{
