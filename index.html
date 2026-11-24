@@ -252,7 +252,7 @@ function payload(extra){
 async function callServer(extra){
   const ep=ls.get("ep")||DEFAULT_EP;
   if(!ep)return demo(extra);
-  if(!ls.get("pw")){$("settings").open=true;throw new Error("Saisis ton code d'accès dans Réglages, puis enregistre");}
+  if(!ls.get("pw")){$("settings").open=true;$("settings").scrollIntoView({behavior:"smooth",block:"center"});throw new Error("Saisis ton code d'accès dans Réglages, puis enregistre");}
   const r=await fetch(ep,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload(extra))});
   const j=await r.json();
   if(!j.ok)throw new Error(j.error||"Erreur du serveur");
@@ -274,7 +274,7 @@ async function send(text){
   try{
     const d=await callServer({action:"turn",message:text});
     await playReplies(d.replies||[]);
-  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e)+". Vérifie les réglages.";if(/accès/i.test(String(e.message||e)))$("settings").open=true;}
+  }catch(e){setSt("idle");live.textContent="Erreur : "+(e.message||e)+". Vérifie les réglages.";if(/accès/i.test(String(e.message||e))){$("settings").open=true;$("settings").scrollIntoView({behavior:"smooth",block:"center"});}}
 }
 
 /* Clôture */
